@@ -1,0 +1,14 @@
+QMAKE_CXX.INCDIRS = \
+    E:\\sslwin64\\include \
+    E:\\sslwin64\\include\\openssl \
+    E:\\BaiduYunDownload\\QtBuildPackage\\icu-win-msvc2013-Windows8.1-x64_ANGLE-devel\\include
+QMAKE_CXX.LIBDIRS = \
+    E:\\sslwin64\\lib \
+    E:\\BaiduYunDownload\\QtBuildPackage\\icu-win-msvc2013-Windows8.1-x64_ANGLE-devel\\lib
+QMAKE_CXX.QT_COMPILER_STDCXX = 199711L
+QMAKE_CXX.QMAKE_MSC_VER = 1916
+QMAKE_CXX.QMAKE_MSC_FULL_VER = 191627045
+QMAKE_CXX.COMPILER_MACROS = \
+    QT_COMPILER_STDCXX \
+    QMAKE_MSC_VER \
+    QMAKE_MSC_FULL_VER
