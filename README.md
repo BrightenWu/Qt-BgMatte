@@ -1,5 +1,5 @@
 # Qt-BgMatte
-The C++ code is based on [BackgroundMattingV2](https://github.com/PeterL1n/BackgroundMattingV2).
+The C++ matting code is based on [BackgroundMattingV2](https://github.com/PeterL1n/BackgroundMattingV2) and [RobustVideoMatting](https://github.com/PeterL1n/RobustVideoMatting).
 
 [![MIT](https://img.shields.io/npm/l/dplayer.svg?style=flat-square)](https://github.com/BrightenWu/miniprogram-cycle/blob/main/LICENSE)
 [![996.icu](https://img.shields.io/badge/link-996.icu-red.svg?style=flat-square)](https://996.icu) 
@@ -15,7 +15,7 @@ The C++ code is based on [BackgroundMattingV2](https://github.com/PeterL1n/Backg
 * [CUDA 10.2](https://developer.download.nvidia.com/compute/cuda/10.2/Prod/network_installers/cuda_10.2.89_win10_network.exe)
 
 ## Demo
-### src
-![res](./x64/Release/input_img/src/src1.png)
-### res
-![res](./Res.png)
+### BackgroundMattingV2
+![BGM](./BGM.gif)
+###  RobustVideoMatting
+![RVM](./RVM.gif)
