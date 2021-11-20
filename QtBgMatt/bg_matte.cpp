@@ -5,11 +5,11 @@
 
 namespace bgmatt
 {
-	class CBgMattePrivate
+	class CMattePrivate
 	{
 	public:
-		CBgMattePrivate() = default;
-		~CBgMattePrivate() = default;
+		CMattePrivate() = default;
+		virtual ~CMattePrivate() = default;
 
 		bool IsCudaAvailable() const
 		{
@@ -24,66 +24,73 @@ namespace bgmatt
 		}
 
 		torch::jit::Module m_sModel;
-		torch::Device m_sDevice = torch::Device("cuda");
-		torch::Tensor m_tensorSrcBgr;
 		torch::Tensor m_tensorTargetBgr;
-		c10::ScalarType m_nPrecision = torch::kFloat32;
-		CBgMatte::MatteResolution m_eMatteResolution = CBgMatte::MatteResolution::MR_HD;
 		QByteArray m_arrayResCache;
+
+		bgmatt::MatteResolution m_eMatteResolution = bgmatt::MatteResolution::MR_HD;
+		torch::Device m_sDevice = torch::Device("cuda");
+		c10::ScalarType m_nPrecision = torch::kFloat16;
+	};
+
+	class CBgMattePrivate :public CMattePrivate
+	{
+	public:
+		CBgMattePrivate() = default;
+		~CBgMattePrivate() = default;
+
+		torch::Tensor m_tensorSrcBgr;
+	};
+
+	class CRVMMattePrivate :public CMattePrivate
+	{
+	public:
+		CRVMMattePrivate() = default;
+		~CRVMMattePrivate() = default;
+
+		c10::optional<torch::Tensor> m_tensorRec0;
+		c10::optional<torch::Tensor> m_tensorRec1;
+		c10::optional<torch::Tensor> m_tensorRec2;
+		c10::optional<torch::Tensor> m_tensorRec3;
+		float m_fDownsampleRatio = 0.4;
 	};
 
 	//////////////////////////////////////////////////////////////////////////
 
-	CBgMatte::CBgMatte()
+	CMatte::CMatte()
 	{
-		d_ptr = std::move(std::unique_ptr<CBgMattePrivate>(new CBgMattePrivate));
+		d_ptr = std::make_shared<CMattePrivate>();
+		d_ptr->m_tensorTargetBgr = torch::tensor({ 120.f / 255, 255.f / 255, 155.f / 255 }).toType(d_ptr->m_nPrecision).to(d_ptr->m_sDevice).view({ 1, 3, 1, 1 });
 	}
 
-	void CBgMatte::SetMatteResolution(MatteResolution eR)
-	{
-		if (!d_ptr->m_sModel.hasattr("refine_mode"))
-		{
-			Q_ASSERT_X(0, __FUNCTION__, "Module error!");
-			return;
-		}
-
-		switch (d_ptr->m_eMatteResolution)
-		{
-		case MR_HD:
-			d_ptr->m_sModel.setattr("backbone_scale", 0.25);
-			d_ptr->m_sModel.setattr("refine_sample_pixels", 80000);
-			break;
-		case MR_4K:
-			d_ptr->m_sModel.setattr("backbone_scale", 0.125);
-			d_ptr->m_sModel.setattr("refine_sample_pixels", 320000);
-			break;
-		default:
-			Q_ASSERT_X(0, __FUNCTION__, "Type error!");
-			break;
-		}
-	}
-
-	CBgMatte::MatteResolution CBgMatte::GetMatteResolution() const
+	MatteResolution CMatte::GetMatteResolution() const
 	{
 		return d_ptr->m_eMatteResolution;
 	}
 
-	bool CBgMatte::LoadModuleFile(const QString &strModuleAbsolutePath)
+	void CMatte::SetTargetBgrImage(const QImage & imgTargetBgr)
 	{
-		if (!d_ptr->IsCudaAvailable() || !QFile::exists(strModuleAbsolutePath))
+		if (imgTargetBgr.isNull())
 		{
-			return false;
+			d_ptr->m_tensorTargetBgr = torch::tensor({ 120.f / 255, 255.f / 255, 155.f / 255 }).toType(d_ptr->m_nPrecision).to(d_ptr->m_sDevice).view({ 1, 3, 1, 1 });
+			return;
 		}
 
-		d_ptr->m_sModel = torch::jit::load(strModuleAbsolutePath.toStdString());
-		d_ptr->m_sModel.setattr("refine_mode", "sampling");
-		d_ptr->m_sModel.to(d_ptr->m_sDevice);
+		//! Load image
+		QImage imgBg(imgTargetBgr);
 
-		SetMatteResolution(d_ptr->m_eMatteResolution);
-		return true;
+		//! Convert to RGB
+		imgBg = imgBg.convertToFormat(QImage::Format_RGB888);
+
+		auto tensorBg = torch::from_blob(imgBg.bits(), { imgBg.height(),imgBg.width(),3 }, torch::kByte);
+		tensorBg = tensorBg.to(d_ptr->m_sDevice);
+		tensorBg = tensorBg.permute({ 2,0,1 }).contiguous();
+		d_ptr->m_tensorTargetBgr = tensorBg.to(d_ptr->m_nPrecision).div(255);
+		d_ptr->m_tensorTargetBgr.unsqueeze_(0);
+
+		return;
 	}
 
-	QImage CBgMatte::SetImage(const QString &strSrcAbsolutePath, const QString &strBgrAbsolutePath)
+	QImage CMatte::SetImage(const QString &strSrcAbsolutePath, const QString &strBgrAbsolutePath)
 	{
 		if (!d_ptr->IsCudaAvailable())
 		{
@@ -137,6 +144,68 @@ namespace bgmatt
 		return imgRes.convertToFormat(formatBg);
 	}
 
+	CMatte::CMatte(std::shared_ptr<CMattePrivate> d) :d_ptr(d)
+	{
+		d_ptr->m_tensorTargetBgr = torch::tensor({ 120.f / 255, 255.f / 255, 155.f / 255 }).toType(d_ptr->m_nPrecision).to(d_ptr->m_sDevice).view({ 1, 3, 1, 1 });
+	}
+
+	//////////////////////////////////////////////////////////////////////////
+
+	CBgMatte::CBgMatte():CMatte(std::make_shared<CBgMattePrivate>())
+	{
+
+	}
+
+	bool CBgMatte::LoadModuleFile(const QString &strModuleAbsolutePath)
+	{
+		if (!d_ptr->IsCudaAvailable() || !QFile::exists(strModuleAbsolutePath))
+		{
+			return false;
+		}
+
+		d_ptr->m_sModel = torch::jit::load(strModuleAbsolutePath.toStdString());
+		d_ptr->m_sModel.setattr("refine_mode", "sampling");
+		d_ptr->m_sModel.to(d_ptr->m_sDevice);
+
+		SetMatteResolution(d_ptr->m_eMatteResolution);
+
+		return true;
+	}
+
+	void CBgMatte::SetMatteResolution(MatteResolution eR)
+	{
+		switch (eR)
+		{
+
+		case MatteResolution::MR_HD:
+		{
+			if (d_ptr->m_sModel.hasattr("refine_mode"))
+			{
+				d_ptr->m_sModel.setattr("backbone_scale", 0.25);
+				d_ptr->m_sModel.setattr("refine_sample_pixels", 80000);
+			}
+		}
+			break;
+
+		case MatteResolution::MR_4K:
+		{
+			if (d_ptr->m_sModel.hasattr("refine_mode"))
+			{
+				d_ptr->m_sModel.setattr("backbone_scale", 0.125);
+				d_ptr->m_sModel.setattr("refine_sample_pixels", 320000);
+			}
+		}
+			break;
+
+		case MatteResolution::MR_SD:
+		default:
+			Q_ASSERT_X(0, __FUNCTION__, "Type error!");
+			break;
+		}
+
+		d_ptr->m_eMatteResolution = eR;
+	}
+		
 	bool CBgMatte::SetSrcBgrImage(const QImage & imgBgr)
 	{
 		if (!d_ptr->IsCudaAvailable())
@@ -158,38 +227,15 @@ namespace bgmatt
 		auto tensorBg = torch::from_blob(imgBg.bits(), { imgBg.height(),imgBg.width(),3 }, torch::kByte);
 		tensorBg = tensorBg.to(d_ptr->m_sDevice);
 		tensorBg = tensorBg.permute({ 2,0,1 }).contiguous();
-		d_ptr->m_tensorSrcBgr = tensorBg.to(d_ptr->m_nPrecision).div(255);
-		d_ptr->m_tensorSrcBgr.unsqueeze_(0);
-		d_ptr->m_tensorSrcBgr = d_ptr->m_tensorSrcBgr.to(d_ptr->m_nPrecision);
+
+		auto pBgmatte = std::dynamic_pointer_cast<CBgMattePrivate>(d_ptr);
+		pBgmatte->m_tensorSrcBgr = tensorBg.to(d_ptr->m_nPrecision).div(255);
+		pBgmatte->m_tensorSrcBgr.unsqueeze_(0);
 
 		return true;
 	}
 
-	void CBgMatte::SetTargetBgrImage(const QImage & imgTargetBgr)
-	{
-		if (imgTargetBgr.isNull())
-		{
-			d_ptr->m_tensorTargetBgr = torch::tensor({ 120.f / 255, 255.f / 255, 155.f / 255 }).toType(d_ptr->m_nPrecision).to(d_ptr->m_sDevice).view({ 1, 3, 1, 1 });
-			return;
-		}
-
-		//! Load image
-		QImage imgBg(imgTargetBgr);
-
-		//! Convert to RGB
-		imgBg = imgBg.convertToFormat(QImage::Format_RGB888);
-
-		auto tensorBg = torch::from_blob(imgBg.bits(), { imgBg.height(),imgBg.width(),3 }, torch::kByte);
-		tensorBg = tensorBg.to(d_ptr->m_sDevice);
-		tensorBg = tensorBg.permute({ 2,0,1 }).contiguous();
-		d_ptr->m_tensorTargetBgr = tensorBg.to(d_ptr->m_nPrecision).div(255);
-		d_ptr->m_tensorTargetBgr.unsqueeze_(0);
-		d_ptr->m_tensorTargetBgr = d_ptr->m_tensorTargetBgr.to(d_ptr->m_nPrecision);
-
-		return;
-	}
-
-	QImage CBgMatte::SetSrcImage(const QImage & imgSrc)
+	QImage CBgMatte::SetImage(const QImage & imgSrc)
 	{
 		if (!d_ptr->IsCudaAvailable())
 		{
@@ -208,25 +254,24 @@ namespace bgmatt
 
 		//! Convert formatBg to RGB
 		imgSrcCopy = imgSrcCopy.convertToFormat(QImage::Format_RGB888);
-		
+
 		auto tensorSrc = torch::from_blob(imgSrcCopy.bits(), { imgSrcCopy.height(),imgSrcCopy.width(),3 }, torch::kByte);
 		tensorSrc = tensorSrc.to(d_ptr->m_sDevice);
 		tensorSrc = tensorSrc.permute({ 2,0,1 }).contiguous();
 		tensorSrc = tensorSrc.to(d_ptr->m_nPrecision).div(255);
 		tensorSrc.unsqueeze_(0);
-		tensorSrc = tensorSrc.to(d_ptr->m_nPrecision);
 
 		//auto start = std::chrono::high_resolution_clock::now();
 
 		//! Inference
 		torch::NoGradGuard no_grad;
-		auto outputs = d_ptr->m_sModel.forward({ tensorSrc, d_ptr->m_tensorSrcBgr }).toTuple()->elements();
+		auto pBgmatte = std::dynamic_pointer_cast<CBgMattePrivate>(d_ptr);
+		auto outputs = d_ptr->m_sModel.forward({ tensorSrc, pBgmatte->m_tensorSrcBgr }).toTuple()->elements();
 
 		//auto time = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count());
 
 		auto pha = outputs[0].toTensor();
 		auto fgr = outputs[1].toTensor();
-		//auto tgt_bgr = torch::tensor({ 120.f / 255, 255.f / 255, 155.f / 255 }).toType(d_ptr->m_nPrecision).to(d_ptr->m_sDevice).view({ 1, 3, 1, 1 });
 
 		auto res_tensor = pha * fgr + (1 - pha) * d_ptr->m_tensorTargetBgr;
 		res_tensor = res_tensor.mul(255).to(torch::kUInt8).cpu().permute({ 0,2,3,1 });
@@ -237,5 +282,132 @@ namespace bgmatt
 		QImage imgRes(reinterpret_cast<uchar *>(d_ptr->m_arrayResCache.data()), res_tensor.size(1), res_tensor.size(0), QImage::Format_RGB888);
 
 		return imgRes.convertToFormat(formatSrc);
+	}
+
+	//////////////////////////////////////////////////////////////////////////
+
+	CRVMMatte::CRVMMatte() :CMatte(std::make_shared<CRVMMattePrivate>())
+	{
+
+	}
+
+	bool CRVMMatte::LoadModuleFile(const QString & strModuleAbsolutePath)
+	{
+		if (!d_ptr->IsCudaAvailable() || !QFile::exists(strModuleAbsolutePath))
+		{
+			return false;
+		}
+
+		d_ptr->m_sModel = torch::jit::load(strModuleAbsolutePath.toStdString());
+
+		//! Optionally, freeze the model. This will trigger graph optimization, such as BatchNorm fusion etc. Frozen models are faster.
+		//torch::jit::freeze(d_ptr->m_sModel);
+		d_ptr->m_sModel.to(d_ptr->m_sDevice);
+		SetMatteResolution(d_ptr->m_eMatteResolution);
+
+		return true;
+	}
+
+	void CRVMMatte::SetMatteResolution(MatteResolution eR)
+	{
+		auto pBgmatte = std::dynamic_pointer_cast<CRVMMattePrivate>(d_ptr);
+
+		switch (eR)
+		{
+		case MatteResolution::MR_SD:
+			pBgmatte->m_fDownsampleRatio = 0.6;
+			break;
+
+		case MatteResolution::MR_HD:
+			pBgmatte->m_fDownsampleRatio = 0.4;
+		break;
+
+		case MatteResolution::MR_4K:
+			pBgmatte->m_fDownsampleRatio = 0.2;
+		break;
+
+		default:
+			Q_ASSERT_X(0, __FUNCTION__, "Type error!");
+			break;
+		}
+
+		d_ptr->m_eMatteResolution = eR;
+	}
+
+	QImage CRVMMatte::SetImage(const QImage & imgSrc)
+	{
+		if (!d_ptr->IsCudaAvailable())
+		{
+			return QImage();
+		}
+
+		if (imgSrc.isNull())
+		{
+			return QImage();
+		}
+
+		//! Load image
+		QImage imgSrcCopy(imgSrc);
+		auto formatSrc = imgSrcCopy.format();
+
+		//! Convert formatBg to RGB
+		imgSrcCopy = imgSrcCopy.convertToFormat(QImage::Format_RGB888);
+
+		auto tensorSrc = torch::from_blob(imgSrcCopy.bits(), { imgSrcCopy.height(),imgSrcCopy.width(),3 }, torch::kByte);
+
+		tensorSrc = tensorSrc.to(d_ptr->m_sDevice);
+		tensorSrc = tensorSrc.permute({ 2,0,1 }).contiguous();
+		tensorSrc = tensorSrc.to(d_ptr->m_nPrecision).div(255);
+		tensorSrc.unsqueeze_(0);
+
+		//! Inference
+		torch::NoGradGuard no_grad;
+
+		auto pBgmatte = std::dynamic_pointer_cast<CRVMMattePrivate>(d_ptr);
+		auto outputs = d_ptr->m_sModel.forward({
+			tensorSrc,
+			pBgmatte->m_tensorRec0,
+			pBgmatte->m_tensorRec1,
+			pBgmatte->m_tensorRec2,
+			pBgmatte->m_tensorRec3,
+			pBgmatte->m_fDownsampleRatio }).toList();
+
+		const auto &fgr = outputs.get(0).toTensor();
+		const auto &pha = outputs.get(1).toTensor();
+		pBgmatte->m_tensorRec0 = outputs.get(2).toTensor();
+		pBgmatte->m_tensorRec1 = outputs.get(3).toTensor();
+		pBgmatte->m_tensorRec2 = outputs.get(4).toTensor();
+		pBgmatte->m_tensorRec3 = outputs.get(5).toTensor();
+
+		auto res_tensor = pha * fgr + (1 - pha) * d_ptr->m_tensorTargetBgr;
+
+		res_tensor = res_tensor.mul(255).permute({ 0,2,3,1 })[0].to(torch::kU8).contiguous().cpu();
+
+		d_ptr->m_arrayResCache = QByteArray(static_cast<char *>(res_tensor.data_ptr()), res_tensor.size(1)*res_tensor.size(0)*res_tensor.size(2));
+		QImage imgRes(reinterpret_cast<uchar *>(d_ptr->m_arrayResCache.data()), res_tensor.size(1), res_tensor.size(0), QImage::Format_RGB888);
+
+		return imgRes.convertToFormat(formatSrc);
+	}
+
+	//////////////////////////////////////////////////////////////////////////
+
+	std::unique_ptr<CMatte> CreateMatteObj(ModuleType eType)
+	{
+		std::unique_ptr<CMatte> p;
+		switch (eType)
+		{
+		case bgmatt::ModuleType::MT_BGM:
+			p = std::make_unique<CBgMatte>();
+			break;
+
+		case bgmatt::ModuleType::MT_VIDEOM:
+			p = std::make_unique<CRVMMatte>();
+			break;
+
+		default:
+			break;
+		}
+
+		return p;
 	}
 }

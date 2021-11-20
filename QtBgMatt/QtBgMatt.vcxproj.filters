@@ -30,12 +30,6 @@
     <QtUic Include="qtbgmatt.ui">
       <Filter>Resource Files</Filter>
     </QtUic>
-    <QtMoc Include="qtbgmatt.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <ClCompile Include="qtbgmatt.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -44,10 +38,18 @@
     <ClCompile Include="bg_matte.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="qtbgmatt.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bg_matte.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="qtbgmatt.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
 </Project>

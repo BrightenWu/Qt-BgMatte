@@ -1,8 +1,8 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-<Qt_DEFINES_>UNICODE;_UNICODE;WIN32;WIN64;QT_NO_DEBUG;QT_WIDGETS_LIB;QT_GUI_LIB;QT_CORE_LIB;NDEBUG</Qt_DEFINES_>
-<Qt_INCLUDEPATH_>"E:\Microsoft Visual Studio\2017\Enterprise\works\Github\Qt-BgMatte\QtBgMatt\x64\Release\qmake\temp";D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\include;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\include\QtWidgets;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\include\QtGui;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\include\QtANGLE;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\include\QtCore;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\mkspecs\win32-msvc</Qt_INCLUDEPATH_>
-<Qt_LIBS_>D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\lib\qtmain.lib;shell32.lib;Qt5Core.lib;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\lib\Qt5Widgets.lib;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\lib\Qt5Gui.lib;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\lib\Qt5Core.lib</Qt_LIBS_>
+<Qt_DEFINES_>UNICODE;_UNICODE;WIN32;WIN64;QT_NO_DEBUG;QT_MULTIMEDIA_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_CONCURRENT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;NDEBUG</Qt_DEFINES_>
+<Qt_INCLUDEPATH_>"E:\Microsoft Visual Studio\2017\Enterprise\works\GitHub\Qt-BgMatte\QtBgMatt\x64\Release\qmake\temp";D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\include;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\include\QtMultimedia;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\include\QtWidgets;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\include\QtGui;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\include\QtANGLE;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\include\QtConcurrent;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\include\QtNetwork;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\include\QtCore;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\mkspecs\win32-msvc</Qt_INCLUDEPATH_>
+<Qt_LIBS_>D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\lib\qtmain.lib;shell32.lib;Qt5Core.lib;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\lib\Qt5Multimedia.lib;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\lib\Qt5Widgets.lib;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\lib\Qt5Gui.lib;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\lib\Qt5Concurrent.lib;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\lib\Qt5Network.lib;D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\lib\Qt5Core.lib</Qt_LIBS_>
 <Qt_LIBPATH_>D:\Qt\Qt5.9.8\5.9.8\msvc2017_64\lib;C:\openssl\lib;C:\Utils\my_sql\my_sql\lib;C:\Utils\postgresql\pgsql\lib</Qt_LIBPATH_>
 <QMake_QT_SYSROOT_></QMake_QT_SYSROOT_>
 <QMake_QT_INSTALL_PREFIX_>D:/Qt/Qt5.9.8/5.9.8/msvc2017_64</QMake_QT_INSTALL_PREFIX_>
@@ -34,7 +34,7 @@
     <QtBkup_QtInstall
       >msvc2017_64_598</QtBkup_QtInstall>
     <QtBkup_QtModules
-      >core;gui;widgets</QtBkup_QtModules>
+      >concurrent;core;gui;multimedia;widgets</QtBkup_QtModules>
     <QtBkup_QtPathBinaries
       >bin</QtBkup_QtPathBinaries>
     <QtBkup_QtPathLibraryExecutables

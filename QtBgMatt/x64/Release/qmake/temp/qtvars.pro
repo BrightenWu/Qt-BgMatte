@@ -1,2 +1,2 @@
 CONFIG += no_fixpath
-QT += core gui widgets
+QT += concurrent core gui multimedia widgets
